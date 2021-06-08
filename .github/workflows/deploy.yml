@@ -5,7 +5,9 @@ on:
         branches: [master]
 
 jobs:
-    depoly:
+    deploy:
+        env:
+            NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         runs-on: ubuntu-latest
         steps:
             - name: Checkout code
@@ -18,8 +20,6 @@ jobs:
 
             - name: Install Dependencies
               run: npm install
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
             - name: Check
               run: npm run check
@@ -42,5 +42,3 @@ jobs:
             - name: Deploy
               run: npm publish
               working-directory: ./dist
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
