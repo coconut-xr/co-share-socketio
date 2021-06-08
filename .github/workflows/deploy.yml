@@ -40,4 +40,5 @@ jobs:
             - name: Deploy
               uses: JS-DevTools/npm-publish@v1
               with:
+                  package_path: "./dist"
                   token: ${{ secrets.NPM_TOKEN }}
