@@ -25,11 +25,17 @@ jobs:
             - name: Build
               run: npm run build
 
-            - name: copy file
+            - name: copy package.json
               uses: canastro/copy-file-action@master
               with:
                 source: "package.json"
                 target: "dist/package.json"
+            
+            - name: copy README.md
+              uses: canastro/copy-file-action@master
+              with:
+                source: "README.md"
+                target: "dist/README.md"
 
             - name: Deploy
               run: npm publish
