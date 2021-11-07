@@ -15,9 +15,9 @@ export function useSocketIoConnection(
     providedRootStore: RootStore = rootStore
 ): Connection {
     const forceUpdate = useForceUpdate()
-    const socket: Socket = persist(() => io(url, options), [url, options, useSocketIoConnectionPersistSymbol])
 
-    const [connection, onDisconnect] = suspend(async () => {
+    const [connection, socket, onDisconnect] = suspend(async () => {
+        const socket: Socket = io(url, options)
         const disconnectSubject = new Subject<void>()
         const result: Connection = {
             userData,
@@ -30,20 +30,20 @@ export function useSocketIoConnection(
             await new Promise<void>((resolve) => socket.on("connect", resolve))
         }
 
-        providedRootStore.link(RootStoreDefaultLinkId, connection)
-        return [result, disconnectSubject] as [Connection, Subject<void>]
-    }, [socket, useSocketIoConnectionSuspenseSymbol])
+        providedRootStore.link(RootStoreDefaultLinkId, result)
+        return [result, socket, disconnectSubject] as [Connection, Socket, Subject<void>]
+    }, [url, options, useSocketIoConnectionPersistSymbol])
 
     useLayoutEffect(() => {
         const listener = () => {
             onDisconnect.next()
-            clear([socket, useSocketIoConnectionSuspenseSymbol])
+            clear([url, options, useSocketIoConnectionPersistSymbol])
             forceUpdate()
         }
         socket.on("disconnect", listener)
         return () => {
-            socket.disconnect()
             socket.off("disconnect", listener)
+            socket.disconnect()
         }
     }, [socket])
 
