@@ -41,7 +41,7 @@ export function SocketIOConnection({
                         fromEvent(socket as any, "connect").pipe(map(() => true))
                     ).pipe(
                         map((connected) =>
-                            connected ? undefined : createConnection(socket, providedRootStore, userData)
+                            connected ? createConnection(socket, providedRootStore, userData) : undefined
                         ),
                         finalize(() => socket.disconnect())
                     )
