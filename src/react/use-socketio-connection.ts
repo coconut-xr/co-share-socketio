@@ -1,7 +1,8 @@
-import { fromEvent } from "rxjs"
+import { fromEvent, Subject } from "rxjs"
+import { takeUntil } from "rxjs/operators"
 import { io, ManagerOptions, Socket, SocketOptions } from "socket.io-client"
 import { useLayoutEffect, useState } from "react"
-import { Connection, rootStore, RootStore, RootStoreDefaultLinkId } from "co-share"
+import { Connection, ConnectionMessage, rootStore, RootStore, RootStoreDefaultLinkId } from "co-share"
 import { clear, peek, preload, suspend } from "suspend-react"
 
 const useSocketIoConnectionPersistSymbol = Symbol()
@@ -16,28 +17,32 @@ export function useSocketIoConnection(
     const forceUpdate = useForceUpdate()
     const socket: Socket = persist(() => io(url, options), [url, options, useSocketIoConnectionPersistSymbol])
 
-    const connection = suspend(() => {
+    const [connection, onDisconnect] = suspend(async () => {
+        const disconnectSubject = new Subject<void>()
         const result: Connection = {
             userData,
             disconnect: () => socket.disconnect(),
             publish: (id, actionIdentifier, ...params) => socket.send(id, actionIdentifier, ...params),
-            receive: () => fromEvent(socket as any, "message"),
+            receive: () => fromEvent<ConnectionMessage>(socket as any, "message").pipe(takeUntil(disconnectSubject)),
         }
-        providedRootStore.link(RootStoreDefaultLinkId, result)
-        if (socket.connected) {
-            return Promise.resolve(result)
-        } else {
-            return new Promise<Connection>((resolve) => socket.on("connect", () => resolve(result)))
+
+        if (!socket.connected) {
+            await new Promise<void>((resolve) => socket.on("connect", resolve))
         }
+
+        providedRootStore.link(RootStoreDefaultLinkId, connection)
+        return [result, disconnectSubject] as [Connection, Subject<void>]
     }, [socket, useSocketIoConnectionSuspenseSymbol])
 
     useLayoutEffect(() => {
         const listener = () => {
+            onDisconnect.next()
             clear([socket, useSocketIoConnectionSuspenseSymbol])
             forceUpdate()
         }
         socket.on("disconnect", listener)
         return () => {
+            socket.disconnect()
             socket.off("disconnect", listener)
         }
     }, [socket])
