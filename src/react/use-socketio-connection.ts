@@ -4,6 +4,9 @@ import { useLayoutEffect, useState } from "react"
 import { Connection, rootStore, RootStore, RootStoreDefaultLinkId } from "co-share"
 import { clear, peek, preload, suspend } from "suspend-react"
 
+const useSocketIoConnectionPersistSymbol = Symbol()
+const useSocketIoConnectionSuspenseSymbol = Symbol()
+
 export function useSocketIoConnection(
     url: string,
     options?: Partial<ManagerOptions & SocketOptions>,
@@ -11,17 +14,14 @@ export function useSocketIoConnection(
     providedRootStore: RootStore = rootStore
 ): Connection {
     const forceUpdate = useForceUpdate()
-    const socket: Socket = persist(() => {
-        console.log(url)
-        return io(url, options)
-    }, [url, options])
+    const socket: Socket = persist(() => io(url, options), [url, options, useSocketIoConnectionPersistSymbol])
 
     const connection = suspend(() => {
         const result: Connection = {
             userData,
             disconnect: () => socket.disconnect(),
             publish: (id, actionIdentifier, ...params) => socket.send(id, actionIdentifier, ...params),
-            receive: () => fromEvent(socket, "message"),
+            receive: () => fromEvent(socket as any, "message"),
         }
         providedRootStore.link(RootStoreDefaultLinkId, result)
         if (socket.connected) {
@@ -29,11 +29,11 @@ export function useSocketIoConnection(
         } else {
             return new Promise<Connection>((resolve) => socket.on("connect", () => resolve(result)))
         }
-    }, [socket])
+    }, [socket, useSocketIoConnectionSuspenseSymbol])
 
     useLayoutEffect(() => {
         const listener = () => {
-            clear([socket])
+            clear([socket, useSocketIoConnectionSuspenseSymbol])
             forceUpdate()
         }
         socket.on("disconnect", listener)
