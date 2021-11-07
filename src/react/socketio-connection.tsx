@@ -25,11 +25,13 @@ export function SocketIOConnection({
     options,
     userData,
     providedRootStore = rootStore,
+    fallback,
 }: React.PropsWithChildren<{
     url: string
     options?: Partial<ManagerOptions & SocketOptions>
     userData?: (socket: Socket) => any
     providedRootStore?: RootStore
+    fallback?: React.ReactNode
 }>) {
     const observable = useMemo<Observable<undefined | Connection>>(
         () =>
@@ -57,9 +59,5 @@ export function SocketIOConnection({
         return () => subscription.unsubscribe()
     }, [observable])
 
-    if (connection == null) {
-        return null
-    }
-
-    return <>{children}</>
+    return <>{connection == null ? fallback : children}</>
 }
